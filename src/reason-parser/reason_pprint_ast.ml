@@ -6278,9 +6278,9 @@ let printer = object(self:'self)
       if jsxAttrs != [] then
         match self#simplest_expression x with
         | Some r -> self#formatChildren remaining (r :: processedRev)
-        | None -> self#formatChildren (remaining @ children) processedRev
+        | None -> self#formatChildren (children @ remaining) processedRev
       else
-        self#formatChildren (remaining @ children) processedRev
+        self#formatChildren (children @ remaining) processedRev
     | ({pexp_desc = Pexp_apply _} as e) :: remaining ->
         let child =
         (* Pipe first behaves differently according to the expression on the

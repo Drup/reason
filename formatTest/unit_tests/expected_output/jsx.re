@@ -334,6 +334,8 @@ let x = foo /></ bar;
 
 <Foo bar=M.[]> ...M.[] </Foo>;
 
+<Foo> 1 2 other </Foo>;
+
 switch (foo) {
 | `Variant => <Component />
 };
