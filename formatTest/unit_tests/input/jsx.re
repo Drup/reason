@@ -236,6 +236,8 @@ let x = foo /></ bar;
 
 <Foo> ...[[1,2] , other] </Foo>;
 
+<Foo> [1,2] other </Foo>;
+
 switch(foo) {
 | `Variant =><Component />
 };
