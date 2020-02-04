@@ -2643,6 +2643,10 @@ jsx_start_tag_and_args_without_leading_less:
 greater_spread:
   | GREATERDOTDOTDOT
   | GREATER DOTDOTDOT { ">..." }
+lessgreater_spread:
+  | LESSGREATER DOTDOTDOT
+  | LESS GREATERDOTDOTDOT
+  | LESS GREATER DOTDOTDOT { "<>..." }
 
 %inline jsx_expr_list:
   LBRACKET expr_comma_seq_extension RBRACKET
@@ -2652,18 +2656,19 @@ jsx_children:
   | simple_expr_no_call_no_get { $1 }
   | jsx_expr_list { $1 }
 
-jsx:
-  | LESSGREATER jsx_children* LESSSLASHGREATER
-    { let loc = mklocation $symbolstartpos $endpos in
-      let body = mktailexp_extension loc $2 None in
-      makeFrag loc body
+%inline jsx_body(LIST,SPREAD):
+  | LIST jsx_children* {
+      let loc = mklocation $startpos($2) $endpos in
+      mktailexp_extension loc $2 None
     }
-  | LESSGREATER DOTDOTDOT jsx_children LESSSLASHGREATER
+  | SPREAD jsx_children { $2 }
+
+jsx_template(TAG,LIST,SPREAD):
+  | jsx_body(LIST,SPREAD) LESSSLASHGREATER
     { let loc = mklocation $symbolstartpos $endpos in
-      let body = $3 (*mktailexp_extension loc $3 None*) in
-      makeFrag loc body
+      makeFrag loc $1
     }
-  | jsx_start_tag_and_args SLASHGREATER
+  | TAG SLASHGREATER
     { let (component, _) = $1 in
       let loc = mklocation $symbolstartpos $endpos in
       component [
@@ -2671,76 +2676,25 @@ jsx:
         (Nolabel, mkexp_constructor_unit loc loc)
       ] loc
     }
-  | jsx_start_tag_and_args GREATER jsx_children* LESSSLASHIDENTGREATER
+  | TAG jsx_body(GREATER,greater_spread) LESSSLASHIDENTGREATER
     { let (component, start) = $1 in
-      let loc = mklocation $startpos($4) $endpos in
+      let loc = mklocation $startpos($2) $endpos in
       (* TODO: Make this tag check simply a warning *)
-      let endName = Longident.parse $4 in
+      let endName = Longident.parse $3 in
       let _ = ensureTagsAreEqual start endName loc in
-      let siblings = if List.length $3 > 0 then $3 else [] in
       component [
-        (Labelled "children", mktailexp_extension loc siblings None);
-        (Nolabel, mkexp_constructor_unit loc loc)
-      ] loc
-    }
-   | jsx_start_tag_and_args greater_spread jsx_children LESSSLASHIDENTGREATER
-     (* <Foo> ...bar </Foo> or <Foo> ...((a) => 1) </Foo> *)
-    { let (component, start) = $1 in
-      let loc = mklocation $symbolstartpos $endpos in
-      (* TODO: Make this tag check simply a warning *)
-      let endName = Longident.parse $4 in
-      let _ = ensureTagsAreEqual start endName loc in
-      let child = $3 in
-      component [
-        (Labelled "children", child);
+        (Labelled "children", $2);
         (Nolabel, mkexp_constructor_unit loc loc)
       ] loc
     }
 ;
 
+jsx:
+  | jsx_template(jsx_start_tag_and_args,LESSGREATER,lessgreater_spread)
+    {$1}
 jsx_without_leading_less:
-  | GREATER jsx_children* LESSSLASHGREATER
-    { let loc = mklocation $symbolstartpos $endpos in
-      let body = mktailexp_extension loc $2 None in
-      makeFrag loc body
-    }
-  | greater_spread jsx_children LESSSLASHGREATER
-    { let loc = mklocation $symbolstartpos $endpos in
-      let body = $2 (*mktailexp_extension loc $3 None*) in
-      makeFrag loc body
-    }
-  | jsx_start_tag_and_args_without_leading_less SLASHGREATER {
-    let (component, _) = $1 in
-    let loc = mklocation $symbolstartpos $endpos in
-    component [
-      (Labelled "children", mktailexp_extension loc [] None);
-      (Nolabel, mkexp_constructor_unit loc loc)
-    ] loc
-  }
-  | jsx_start_tag_and_args_without_leading_less GREATER jsx_children* LESSSLASHIDENTGREATER
-    { let (component, start) = $1 in
-      let loc = mklocation $symbolstartpos $endpos in
-      (* TODO: Make this tag check simply a warning *)
-      let endName = Longident.parse $4 in
-      let _ = ensureTagsAreEqual start endName loc in
-      let child = mktailexp_extension loc $3 None in
-      component [
-        (Labelled "children", child);
-        (Nolabel, mkexp_constructor_unit loc loc)
-      ] loc
-  }
-    | jsx_start_tag_and_args_without_leading_less greater_spread jsx_children LESSSLASHIDENTGREATER {
-    let (component, start) = $1 in
-    let loc = mklocation $symbolstartpos $endpos in
-    (* TODO: Make this tag check simply a warning *)
-    let endName = Longident.parse $4 in
-    let _ = ensureTagsAreEqual start endName loc in
-    let child = $3 in
-    component [
-      (Labelled "children", child);
-      (Nolabel, mkexp_constructor_unit loc loc)
-    ] loc
-  }
+  | jsx_template(jsx_start_tag_and_args_without_leading_less,GREATER,greater_spread)
+    {$1}
 ;
 
 optional_expr_extension:
