@@ -2991,11 +2991,6 @@ parenthesized_expr:
       mkexp(Pexp_open (Fresh, $1,
                        mkexp(Pexp_object(Cstr.mk pat []))))
     }
-  | E LBRACKET expr RBRACKET
-    { let loc = mklocation $symbolstartpos $endpos in
-      let exp = Pexp_ident(array_function ~loc "Array" "get") in
-      mkexp(Pexp_apply(mkexp ~ghost:true ~loc exp, [Nolabel,$1; Nolabel,$3]))
-    }
   | E DOT LBRACKET expr RBRACKET
     { let loc = mklocation $symbolstartpos $endpos in
       let exp = Pexp_ident(array_function ~loc "String" "get") in
@@ -3103,13 +3098,27 @@ simple_expr_template_constructor:
     { mkexp(Pexp_variant($1, Some $2)) }
 ;
 
+%inline simple_expr_template_get(E):
+  | E LBRACKET expr RBRACKET
+    { let loc = mklocation $symbolstartpos $endpos in
+      let exp = Pexp_ident(array_function ~loc "Array" "get") in
+      mkexp(Pexp_apply(mkexp ~ghost:true ~loc exp, [Nolabel,$1; Nolabel,$3]))
+    }
+
+simple_expr_no_call_no_get [@recover.expr default_expr ()]:
+  | mark_position_exp(simple_expr_template(simple_expr_no_call_no_get)) { $1 }
+  | simple_expr_template_constructor { $1 }
+;
+
 simple_expr_no_call [@recover.expr default_expr ()]:
   | mark_position_exp(simple_expr_template(simple_expr_no_call)) { $1 }
+  | mark_position_exp(simple_expr_template_get(simple_expr_no_call)) { $1 }
   | simple_expr_template_constructor { $1 }
 ;
 
 simple_expr_call [@recover.expr (default_expr (), [])]:
   | mark_position_exp(simple_expr_template(simple_expr)) { ($1, []) }
+  | mark_position_exp(simple_expr_template_get(simple_expr)) { $1, [] }
   | simple_expr_call labeled_arguments
     { let (body, args) = $1 in
       (body, List.rev_append $2 args) }
